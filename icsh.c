@@ -7,6 +7,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #define MAX_CMD_BUFFER 255
 
@@ -22,6 +23,23 @@ int isWhitespaceOrNewline(const char* str) {
         str++;
     }
     return 1;
+}
+void external(char* input) {
+    if (fork() == 0) {
+        char copy[MAX_CMD_BUFFER];
+        strcpy(copy, input);
+        char* args[255];
+        int i = 0;
+        char* p = strtok(copy, " \n");
+        while (p != NULL) {
+            args[i++] = p;
+            p = strtok(NULL, " \n");
+        }
+        args[i] = p;
+        execvp(args[0], args);
+    } else {
+        wait(NULL);
+    }
 }
 
 void echo(char* text) {
@@ -53,8 +71,9 @@ void execute(char* input) {
             exit(0);
         }
     } else {
-        strcpy(prevbuffer, buffer);
-        printf("bad command\n");
+        external(input);
+        //strcpy(prevbuffer, buffer);
+        //printf("bad command\n");
     }
 }
 int main(int argc, char *argv[]) {
