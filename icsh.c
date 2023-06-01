@@ -1,17 +1,63 @@
 /* ICCS227: Project 1: icsh
- * Name:
- * StudentID:
+ * Name: Szu-Chi Hsu
+ * StudentID: 6480921
  */
 
-#include "stdio.h"
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+#include <stdlib.h>
 
 #define MAX_CMD_BUFFER 255
 
+char buffer[MAX_CMD_BUFFER];
+char prevbuffer[MAX_CMD_BUFFER] = "";
+
+int isWhitespaceOrNewline(const char* str) {
+    while (*str != '\0') {
+        if (!isspace(*str)) {
+            return 0;
+        }
+        str++;
+    }
+    return 1;
+}
+
+void echo(char* text) {
+    if (text == NULL) printf("\n");
+    else printf("%s\n", text);
+}
+void execute(char* input) {
+    if (isWhitespaceOrNewline(input)) return;
+    char copy[MAX_CMD_BUFFER];
+    strcpy(copy, input);
+    char *command = strtok(copy, " \n");
+    if (strcmp(command, "echo") == 0) {
+        strcpy(prevbuffer, buffer);
+        echo(strtok(NULL, "\n"));
+    } else if (strcmp(command, "!!") == 0) {
+        if (strcmp(prevbuffer, "") != 0) {
+            strcpy(buffer, prevbuffer);
+            printf("%s", prevbuffer);
+            execute(prevbuffer);
+        } else {
+            return;
+        }
+    } else if (strcmp(command, "exit") == 0) {
+        printf("Goodbye\n");
+        char* status = strtok(NULL, "\n");
+        if (status != NULL)
+            exit((unsigned char)(0xFF & atoi(status)));
+        exit(0);
+    } else {
+        strcpy(prevbuffer, buffer);
+        printf("bad command\n");
+    }
+}
 int main() {
-    char buffer[MAX_CMD_BUFFER];
     while (1) {
         printf("icsh $ ");
         fgets(buffer, 255, stdin);
-        printf("you said: %s\n", buffer);
+        execute(buffer);
     }
 }
