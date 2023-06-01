@@ -71,9 +71,8 @@ void execute(char* input) {
             exit(0);
         }
     } else {
+        strcpy(prevbuffer, buffer);
         external(input);
-        //strcpy(prevbuffer, buffer);
-        //printf("bad command\n");
     }
 }
 int main(int argc, char *argv[]) {
