@@ -12,6 +12,7 @@
 
 char buffer[MAX_CMD_BUFFER];
 char prevbuffer[MAX_CMD_BUFFER] = "";
+char shell;
 
 int isWhitespaceOrNewline(const char* str) {
     while (*str != '\0') {
@@ -38,26 +39,39 @@ void execute(char* input) {
     } else if (strcmp(command, "!!") == 0) {
         if (strcmp(prevbuffer, "") != 0) {
             strcpy(buffer, prevbuffer);
-            printf("%s", prevbuffer);
+            if (shell) printf("%s", prevbuffer);
             execute(prevbuffer);
         } else {
             return;
         }
     } else if (strcmp(command, "exit") == 0) {
-        printf("Goodbye\n");
+        if (shell) printf("Goodbye\n");
         char* status = strtok(NULL, "\n");
-        if (status != NULL)
+        if (status != NULL) {
             exit((unsigned char)(0xFF & atoi(status)));
-        exit(0);
+        } else {
+            exit(0);
+        }
     } else {
         strcpy(prevbuffer, buffer);
         printf("bad command\n");
     }
 }
-int main() {
-    while (1) {
-        printf("icsh $ ");
-        fgets(buffer, 255, stdin);
-        execute(buffer);
+int main(int argc, char *argv[]) {
+    if (argc > 1) {
+        shell = 0;
+        FILE *file;
+        file = fopen(argv[1], "r");
+        while(1){
+            fgets(buffer, 255, file);
+            execute(buffer);
+        } 
+    } else {
+        shell = 1;
+        while (1) {
+            printf("icsh $ ");
+            fgets(buffer, 255, stdin);
+            execute(buffer);
+        }        
     }
 }
