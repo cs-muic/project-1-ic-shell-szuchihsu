@@ -8,12 +8,15 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <signal.h>
 
 #define MAX_CMD_BUFFER 255
 
 char buffer[MAX_CMD_BUFFER];
 char prevbuffer[MAX_CMD_BUFFER] = "";
 char shell;
+int exitcode = 0;
+pid_t foreground = 0;
 
 int isWhitespaceOrNewline(const char* str) {
     while (*str != '\0') {
@@ -25,7 +28,8 @@ int isWhitespaceOrNewline(const char* str) {
     return 1;
 }
 void external(char* input) {
-    if (fork() == 0) {
+    pid_t pid = fork();
+    if (pid == 0) {
         char copy[MAX_CMD_BUFFER];
         strcpy(copy, input);
         char* args[255];
@@ -37,14 +41,31 @@ void external(char* input) {
         }
         args[i] = p;
         execvp(args[0], args);
+        exit(1);
     } else {
-        wait(NULL);
+        foreground = pid;
+        waitpid(pid, &exitcode, WUNTRACED);
+        foreground = 0;
+    }
+}
+
+void stophandler() {
+    if (foreground != 0) {
+        kill(foreground, SIGTSTP);
+    }
+}
+
+void inthandler() {
+    if (foreground != 0) {
+        kill(foreground, SIGINT);
     }
 }
 
 void echo(char* text) {
     if (text == NULL) printf("\n");
+    else if (strcmp(text, "$?") == 0) printf("%d\n", exitcode);
     else printf("%s\n", text);
+
 }
 void execute(char* input) {
     if (isWhitespaceOrNewline(input)) return;
@@ -76,6 +97,8 @@ void execute(char* input) {
     }
 }
 int main(int argc, char *argv[]) {
+    signal(SIGTSTP, stophandler);
+    signal(SIGINT, inthandler);
     if (argc > 1) {
         shell = 0;
         FILE *file;
