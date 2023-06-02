@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
+#include <fcntl.h>
 
 #define MAX_CMD_BUFFER 255
 
@@ -27,24 +28,65 @@ int isWhitespaceOrNewline(const char* str) {
     }
     return 1;
 }
+
+
 void external(char* input) {
+    char copy[MAX_CMD_BUFFER];
+    strcpy(copy, input);
+    char* args[255];
+    int i = 0;
+    char* p = strtok(copy, " \n");
+    while (p != NULL) {
+        args[i++] = p;
+        p = strtok(NULL, " \n");
+    }
+    args[i] = p;
+    int io = -1;
+    char* in;
+    char* out;
+    int j = 0;
+    while (args[j] != NULL) {
+        if (strcmp(args[j], "<") == 0) {
+            io = 1;
+            in = args[j+1];
+            args[j] = NULL;
+        } else if (strcmp(args[j], ">") == 0) {
+            io = 0;
+            out = args[j+1];
+            args[j] = NULL;
+        }
+        j++;
+    }
+    int saved_stdout = dup(1);
+    int saved_stdin = dup(0);
+    if (io == 1) {
+        int infile = open(in, O_RDONLY);
+        if (infile <= 0) {
+            printf("Input file not found");
+            exit(1);
+        }
+        dup2(infile, 0);
+        close(infile);
+    } else if (io == 0){
+        int outfile = open(out, O_TRUNC | O_CREAT | O_WRONLY, 0666);
+        if (outfile <= 0) {
+            printf("Output file not found");
+            exit(1);
+        }
+        dup2(outfile, 1);
+        close(outfile);
+    }
     pid_t pid = fork();
     if (pid == 0) {
-        char copy[MAX_CMD_BUFFER];
-        strcpy(copy, input);
-        char* args[255];
-        int i = 0;
-        char* p = strtok(copy, " \n");
-        while (p != NULL) {
-            args[i++] = p;
-            p = strtok(NULL, " \n");
-        }
-        args[i] = p;
         execvp(args[0], args);
         exit(1);
     } else {
         foreground = pid;
         waitpid(pid, &exitcode, WUNTRACED);
+        dup2(saved_stdout, 1);
+        dup2(saved_stdin, 0);
+        close(saved_stdout);
+        close(saved_stdin);
         foreground = 0;
     }
 }
